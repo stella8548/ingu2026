@@ -1,7 +1,504 @@
-<!-- 우리 동네 인구 검색 페이지 대표 이미지 -->
-<div class="hero-image">
-  <img
-    src="population-hero.png"
-    alt="우리나라 지역별 인구와 다양한 지역사회를 보여 주는 일러스트"
-  >
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리 동네 인구 찾기</title>
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 30px 16px;
+    font-family: Arial, "Malgun Gothic", sans-serif;
+    background: #f2f5fb;
+    color: #202b40;
+  }
+
+  .container {
+    max-width: 700px;
+    margin: 30px auto;
+    padding: 28px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.07);
+  }
+
+  h1 {
+    margin-top: 0;
+    color: #2457d6;
+    font-size: 28px;
+  }
+
+  .description {
+    color: #657087;
+    line-height: 1.7;
+  }
+
+  label {
+    display: block;
+    margin: 24px 0 8px;
+    font-weight: bold;
+  }
+
+  .search-area {
+    display: flex;
+    gap: 8px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid #ccd4e2;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 10px;
+    background: #2457d6;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #1945b5;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  #status {
+    margin: 16px 0;
+    color: #657087;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  #placeName {
+    margin-top: 25px;
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .card {
+    padding: 20px 12px;
+    border-radius: 14px;
+    background: #f2f5fb;
+    text-align: center;
+  }
+
+  .card-title {
+    margin-bottom: 12px;
+    color: #657087;
+    font-size: 14px;
+  }
+
+  .number {
+    font-size: 23px;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+  }
+
+  .unit {
+    margin-top: 5px;
+    color: #657087;
+    font-size: 13px;
+  }
+
+  .source {
+    margin-top: 24px;
+    color: #657087;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 520px) {
+    .container { padding: 20px; }
+    .search-area { flex-direction: column; }
+    .cards { grid-template-columns: 1fr; }
+    .card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .card-title { margin: 0; }
+    .number { font-size: 20px; }
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>우리 동네 인구 찾기</h1>
+
+  <p class="description">
+    동네 이름을 검색하고 선택하면<br>
+    총인구, 남자 인구, 여자 인구를 확인할 수 있습니다.
+  </p>
+
+  <label for="searchInput">동네 이름 검색</label>
+
+  <div class="search-area">
+    <input
+      id="searchInput"
+      list="placeList"
+      placeholder="예: 역삼1동, 제주특별자치도"
+      autocomplete="off"
+      disabled
+    >
+    <datalist id="placeList"></datalist>
+    <button id="searchButton" disabled>인구 조회</button>
+  </div>
+
+  <p id="status" role="status" aria-live="polite">
+    인구 데이터를 불러오는 중입니다.
+  </p>
+
+  <div id="result" hidden>
+    <div id="placeName"></div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">총인구</div>
+        <div>
+          <div class="number" id="total">-</div>
+          <div class="unit">명</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">남자 인구</div>
+        <div>
+          <div class="number" id="male">-</div>
+          <div class="unit">명</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">여자 인구</div>
+        <div>
+          <div class="number" id="female">-</div>
+          <div class="unit">명</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="source">
+    자료:
+    <a href="https://raw.githubusercontent.com/greatsong/modudata/main/data/population_latest.csv"
+       target="_blank" rel="noopener">
+      동네별 인구 CSV 원본
+    </a>
+  </div>
 </div>
+
+<script>
+const CSV_URL =
+  "https://raw.githubusercontent.com/greatsong/modudata/main/data/population_latest.csv";
+
+const input = document.getElementById("searchInput");
+const placeList = document.getElementById("placeList");
+const searchButton = document.getElementById("searchButton");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+
+let places = [];
+
+// CSV 파싱: 큰따옴표 안의 쉼표도 올바르게 처리
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"' && field === "") {
+      quoted = true;
+    } else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (c !== "\r") {
+      field += c;
+    }
+  }
+
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows.filter(r => r.some(v => v.trim() !== ""));
+}
+
+// 지역명 뒤의 숫자 코드 제거: 예) 서울특별시 (1100000000)
+function cleanName(name) {
+  return String(name || "")
+    .replace(/\s*\(\s*\d+\s*\)\s*/g, "")
+    .trim();
+}
+
+// 숫자 문자열의 쉼표 제거
+function parseNumber(value) {
+  const cleaned = String(value ?? "").replace(/,/g, "").trim();
+
+  if (!cleaned || cleaned === "-" || cleaned === "—") {
+    return null;
+  }
+
+  const number = Number(cleaned);
+  return Number.isFinite(number) ? number : null;
+}
+
+// 화면에 천 단위 쉼표 표시
+function formatNumber(number) {
+  return number === null
+    ? "자료 없음"
+    : number.toLocaleString("ko-KR");
+}
+
+// CSV의 지역명 열 찾기
+function findNameColumn(headers) {
+  const patterns = [
+    /행정구역/,
+    /행정기관/,
+    /지역명/,
+    /지역/,
+    /시도명/,
+    /시군구명/,
+    /읍면동명/
+  ];
+
+  for (const pattern of patterns) {
+    const index = headers.findIndex(h => pattern.test(h));
+    if (index >= 0) return index;
+  }
+
+  // 지역명 열을 못 찾으면 첫 번째 열 사용
+  return 0;
+}
+
+// 인구 열 찾기
+function findPopulationColumn(headers, month, type) {
+  const exact = `${month}_${type}`;
+  let index = headers.indexOf(exact);
+
+  if (index >= 0) return index;
+
+  // 월 이름이 다르거나 열 형식이 조금 다른 경우
+  if (type === "총인구수") {
+    index = headers.findIndex(h =>
+      /총인구수$/.test(h) &&
+      !/(남|여)_총인구수$/.test(h)
+    );
+  } else {
+    index = headers.findIndex(h =>
+      h.endsWith(`_${type}`)
+    );
+  }
+
+  return index;
+}
+
+// 데이터 불러오기
+async function loadData() {
+  try {
+    const response = await fetch(CSV_URL, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("CSV 파일을 불러오지 못했습니다.");
+    }
+
+    const buffer = await response.arrayBuffer();
+
+    // 행정안전부 원본의 EUC-KR 인코딩 처리
+    const text = new TextDecoder("euc-kr")
+      .decode(buffer)
+      .replace(/^\uFEFF/, "");
+
+    const rows = parseCSV(text);
+
+    if (rows.length < 2) {
+      throw new Error("CSV에 데이터가 없습니다.");
+    }
+
+    const headers = rows[0].map(h => h.trim());
+
+    // CSV에서 가장 최근 연월 찾기
+    const months = headers
+      .map(h => {
+        const match = h.match(/(\d{4}년\d{2}월)_/);
+        return match ? match[1] : null;
+      })
+      .filter(Boolean);
+
+    const latestMonth = [...new Set(months)].sort().pop();
+
+    if (!latestMonth) {
+      throw new Error("인구 데이터의 연월 열을 찾지 못했습니다.");
+    }
+
+    const nameIndex = findNameColumn(headers);
+    const totalIndex = findPopulationColumn(
+      headers, latestMonth, "총인구수"
+    );
+    const maleIndex = findPopulationColumn(
+      headers, latestMonth, "남_총인구수"
+    );
+    const femaleIndex = findPopulationColumn(
+      headers, latestMonth, "여_총인구수"
+    );
+
+    if (maleIndex < 0 || femaleIndex < 0) {
+      throw new Error("남자·여자 총인구 열을 찾지 못했습니다.");
+    }
+
+    places = rows.slice(1)
+      .map(row => {
+        const rawName = String(row[nameIndex] || "").trim();
+
+        if (!rawName) return null;
+
+        const male = parseNumber(row[maleIndex]);
+        const female = parseNumber(row[femaleIndex]);
+
+        let total = totalIndex >= 0
+          ? parseNumber(row[totalIndex])
+          : null;
+
+        // 총인구 열이 없으면 남자와 여자 인구의 합산
+        if (total === null && male !== null && female !== null) {
+          total = male + female;
+        }
+
+        return {
+          rawName,
+          name: cleanName(rawName),
+          total,
+          male,
+          female
+        };
+      })
+      .filter(p => p && p.name);
+
+    // 검색 목록 만들기
+    placeList.replaceChildren();
+
+    places.forEach(place => {
+      const option = document.createElement("option");
+      option.value = place.name;
+      placeList.appendChild(option);
+    });
+
+    input.disabled = false;
+    searchButton.disabled = false;
+
+    status.textContent =
+      `${places.length.toLocaleString("ko-KR")}개 지역의 ` +
+      `데이터를 불러왔습니다. (${latestMonth} 기준)`;
+
+  } catch (error) {
+    console.error(error);
+
+    status.textContent =
+      "데이터를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요. " +
+      "계속 실패하면 아래 안내를 확인하세요.";
+  }
+}
+
+// 동네 검색 및 결과 표시
+function searchPlace() {
+  const query = input.value.trim();
+
+  if (!query) {
+    status.textContent = "동네 이름을 입력해 주세요.";
+    result.hidden = true;
+    return;
+  }
+
+  // 먼저 정확하게 일치하는 이름 검색
+  let matches = places.filter(p =>
+    p.name === query || p.rawName === query
+  );
+
+  // 정확한 이름이 없으면 일부 일치 검색
+  if (matches.length === 0) {
+    matches = places.filter(p =>
+      p.name.includes(query) || p.rawName.includes(query)
+    );
+  }
+
+  if (matches.length === 0) {
+    status.textContent = "일치하는 동네가 없습니다. 이름을 확인해 주세요.";
+    result.hidden = true;
+    return;
+  }
+
+  if (matches.length > 1) {
+    status.textContent =
+      `${matches.length.toLocaleString("ko-KR")}개 지역이 검색됐습니다. ` +
+      "검색 목록에서 정확한 동네 이름을 선택해 주세요.";
+    result.hidden = true;
+    return;
+  }
+
+  const place = matches[0];
+
+  document.getElementById("placeName").textContent = place.name;
+  document.getElementById("total").textContent = formatNumber(place.total);
+  document.getElementById("male").textContent = formatNumber(place.male);
+  document.getElementById("female").textContent = formatNumber(place.female);
+
+  input.value = place.name;
+  result.hidden = false;
+  status.textContent = "인구 조회 결과입니다.";
+}
+
+searchButton.addEventListener("click", searchPlace);
+
+input.addEventListener("keydown", event => {
+  if (event.key === "Enter") searchPlace();
+});
+
+input.addEventListener("change", searchPlace);
+
+loadData();
+</script>
+</body>
+</html>
